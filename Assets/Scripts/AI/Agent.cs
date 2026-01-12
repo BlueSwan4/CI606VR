@@ -37,7 +37,9 @@ public class Agent : MonoBehaviour
 
         if (Time.time >= _nextDecisionTime)
         {
-            if (_currentDestination is null)
+            //re-decide if we have there is no destination OR if an event just started and the ai isnt headed there yet
+            var headedToConcert = _currentDestination is not null && _currentDestination.destinationType == Destination.DestinationType.Boredom;
+            if (_currentDestination is null || (EventManager.IsEventActive && !headedToConcert))
             {
                 var allDestinations = FindObjectsByType<Destination>(FindObjectsSortMode.None);
                 DecideAction(allDestinations);
@@ -64,20 +66,29 @@ public class Agent : MonoBehaviour
 
     private void DecideAction(Destination[] allDestinations)
     {
-        //determine highest priority based on weights
-        var hunger = _profile.hunger * hungerWeight;
-        var bladder = _profile.toiletNeed * bladderWeight;
-        var boredom = _profile.boredom * boredomWeight;
-        
-        var highestNeed = Mathf.Max(hunger, bladder, boredom);
-        if (highestNeed < Profile.ActionThreshold)
-            Wander();
-        
-        //get destination based on highest priority
         Destination.DestinationType destinationType;
-        if (Mathf.Approximately(highestNeed, bladder)) destinationType = Destination.DestinationType.Bladder;
-        else if (Mathf.Approximately(highestNeed, hunger)) destinationType = Destination.DestinationType.Hunger;
-        else destinationType = Destination.DestinationType.Boredom;
+        if (EventManager.IsEventActive)
+        {
+            //force everyone to boredom to meet in concert hall
+            destinationType = Destination.DestinationType.Boredom;
+        }
+        else
+        {
+            var hunger = _profile.hunger * hungerWeight;
+            var bladder = _profile.toiletNeed * bladderWeight;
+            var boredom = _profile.boredom * boredomWeight;
+        
+            var highestNeed = Mathf.Max(hunger, bladder, boredom);
+            if (highestNeed < Profile.ActionThreshold)
+            {
+                Wander();
+                return; 
+            }
+
+            if (Mathf.Approximately(highestNeed, bladder)) destinationType = Destination.DestinationType.Bladder;
+            else if (Mathf.Approximately(highestNeed, hunger)) destinationType = Destination.DestinationType.Hunger;
+            else destinationType = Destination.DestinationType.Boredom;
+        }
         
         _currentDestination = FindAvailableLocation(allDestinations, destinationType);
         if (_currentDestination is not null)
@@ -91,23 +102,25 @@ public class Agent : MonoBehaviour
 
     private Destination FindAvailableLocation(Destination[] allDestinations, Destination.DestinationType targetDestination)
     {
-        //filter locations based on needs
         var validDestinations = allDestinations.Where(dest => dest.destinationType == targetDestination).ToList();
-        validDestinations = validDestinations.Where(dest => !dest.isOccupied).ToList();
 
-        //disability constraints
-        if (targetDestination == Destination.DestinationType.Bladder)
-        {
-            //if the agent is disabled only go to disabled toilets, else just go to normal toilets
-            validDestinations = _profile.isDisabled ? validDestinations.Where(dest => dest.restrictedAccess).ToList() //only place that's restricted is disabled toilets
-                : validDestinations.Where(dest => !dest.restrictedAccess).ToList(); //every other toilet is unrestricted
-        }
+        //only filter by occupied if there is no event going on
+        //lets multiple agents occupy the same destination
+        if (!EventManager.IsEventActive)
+            validDestinations = validDestinations.Where(dest => !dest.isOccupied).ToList();
+
+        //general agents cannot access restricted areas
+        if (!_profile.isDisabled)
+            validDestinations = validDestinations.Where(dest => !dest.restrictedAccess).ToList();
+        //only disabled agents can access restricted areas for toilet needs
+        else if (targetDestination == Destination.DestinationType.Bladder)
+            validDestinations = validDestinations.Where(dest => dest.restrictedAccess).ToList();
 
         if (!validDestinations.Any()) return null;
-        
+    
         validDestinations.Sort((a, b) => Vector3.Distance(a.transform.position, transform.position).CompareTo(
             Vector3.Distance(b.transform.position, transform.position)));
-        
+    
         return validDestinations.FirstOrDefault();
     }
     
@@ -123,13 +136,22 @@ public class Agent : MonoBehaviour
         else if (_currentDestination.destinationType == Destination.DestinationType.Boredom)
             _profile.boredom = Mathf.MoveTowards(_profile.boredom, 0f, needFulfillmentRate * Time.deltaTime);
         
-        //once needs are met start looking for next need
-        if (_profile.toiletNeed == 0 || _profile.hunger == 0 || _profile.boredom == 0)
+        var needIsMet = (_profile.toiletNeed == 0 || _profile.hunger == 0 || _profile.boredom == 0);
+        
+        if (needIsMet && !EventManager.IsEventActive)
         {
             _currentDestination.isOccupied = false;
             _currentDestination = null;
             _agent.isStopped = false;
             Wander();
+        }
+        //agent will leave if theyre at the wrong destination and enter the concert hall
+        else if (EventManager.IsEventActive && _currentDestination.destinationType != Destination.DestinationType.Boredom)
+        {
+            _currentDestination.isOccupied = false;
+            _currentDestination = null;
+            _agent.isStopped = false;
+            //next update tick will trigger DecideAction since currentDest is null
         }
     }
 

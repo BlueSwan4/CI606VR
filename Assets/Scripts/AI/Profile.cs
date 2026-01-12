@@ -27,7 +27,7 @@ public class Profile : MonoBehaviour
         hunger = Random.Range(0f, .5f);
         toiletNeed = Random.Range(0f, .5f);
         boredom = Random.Range(0f, .5f);
-        
-       gameObject.GetComponent<Renderer>().material.color = Random.ColorHSV(0f, 1f, 1f, 1f, 1f, 1f);
+
+        gameObject.GetComponent<Renderer>().material.color = isDisabled ? Color.blue : Color.red;
     }
 }
