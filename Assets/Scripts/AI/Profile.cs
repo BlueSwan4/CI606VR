@@ -24,9 +24,9 @@ public class Profile : MonoBehaviour
         gender = (Gender)Random.Range(0f, 3f); //change later to more accurately represent brighton gender statistics if we want
         isDisabled = Random.value < .19f; //19% of being disabled | Src: (https://www.brighton-hove.gov.uk/council-and-democracy/equality/becoming-accessible-city/our-diverse-city)
 
-        hunger = Random.Range(0f, .5f);
-        toiletNeed = Random.Range(0f, .5f);
-        boredom = Random.Range(0f, .5f);
+        hunger = Random.Range(0f, .7f);
+        toiletNeed = Random.Range(0f, .7f);
+        boredom = Random.Range(0f, .7f);
 
         gameObject.GetComponent<Renderer>().material.color = isDisabled ? Color.blue : Color.red;
     }

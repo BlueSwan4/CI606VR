@@ -3,11 +3,11 @@ using UnityEngine;
 
 public class EventManager : MonoBehaviour
 {
-    public static bool IsEventActive { get; private set; }
+    public static bool IsEventActive { get; private set;}
 
-    public float _timer;
+    private float _timer;
     public float eventStarts;
-    private bool _eventHasHappened = false;
+    private bool _eventHasHappened;
 
     private void Update()
     {
@@ -15,17 +15,19 @@ public class EventManager : MonoBehaviour
         
         if(!_eventHasHappened && _timer >= eventStarts)
             StartCoroutine(RunEvent());
+        
+        Debug.Log(IsEventActive);
     }
 
     private IEnumerator RunEvent()
     {
         _eventHasHappened = true;
         IsEventActive = true;
-        Debug.Log("staart");
+        Debug.Log("Event Started");
 
-        yield return new WaitForSeconds(60);
+        yield return new WaitForSeconds(180f);
         
-        Debug.Log("done");
+        Debug.Log("Event Finished");
         IsEventActive = false;
     }
 }

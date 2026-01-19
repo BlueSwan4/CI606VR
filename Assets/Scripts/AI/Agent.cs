@@ -157,7 +157,7 @@ public class Agent : MonoBehaviour
 
     private void Wander()
     {
-        var randomDir = Random.insideUnitSphere * 100;
+        var randomDir = Random.insideUnitSphere * 25;
         randomDir += transform.position;
         
         //sample point on the mesh within radius
